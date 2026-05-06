@@ -49,6 +49,13 @@ AMD_CI_CASE_ESTIMATE_OVERRIDES = {
         # This case has repeatedly stalled during HF download/startup on mi300.
         "qwen_image_edit_2511_ti2i": 900.0,
     },
+    "2-gpu": {
+        # MI300 cold-starts for these large video models can spend tens of minutes
+        # streaming weights before the server becomes ready.
+        "wan2_2_t2v_a14b_teacache_2gpu": 1800.0,
+        "ltx_2.3_two_stage_t2v_2gpus": 3600.0,
+        "ltx_2.3_one_stage_ti2v": 1800.0,
+    },
 }
 
 
@@ -100,7 +107,12 @@ def compute_partition_count(
     return max(min_partition_count, min(preferred_count, max_partition_count))
 
 
-def get_amd_ci_case_est_time(suite_name: str, case_id: str, base_est_time: float) -> float:
+def get_case_est_time(
+    suite_name: str, case_id: str, base_est_time: float, use_amd_ci_estimates: bool
+) -> float:
+    if not use_amd_ci_estimates:
+        return base_est_time
+
     est_time = base_est_time * AMD_CI_CASE_ESTIMATE_SCALE
     suite_overrides = AMD_CI_CASE_ESTIMATE_OVERRIDES.get(suite_name, {})
     override_est_time = suite_overrides.get(case_id)
@@ -110,14 +122,19 @@ def get_amd_ci_case_est_time(suite_name: str, case_id: str, base_est_time: float
 
 
 def build_partition_items(
-    suite_info: DiffusionSuiteInfo, include_standalone: bool = True
+    suite_info: DiffusionSuiteInfo,
+    include_standalone: bool = True,
+    use_amd_ci_estimates: bool = False,
 ) -> list[PartitionItem]:
     items = [
         PartitionItem(
             kind="case",
             item_id=case.case_id,
-            est_time=get_amd_ci_case_est_time(
-                suite_info.suite, case.case_id, case.est_time
+            est_time=get_case_est_time(
+                suite_info.suite,
+                case.case_id,
+                case.est_time,
+                use_amd_ci_estimates,
             ),
         )
         for case in suite_info.cases
@@ -195,11 +212,14 @@ def print_suite_summary(
     suite_info: DiffusionSuiteInfo,
     partitions: list[list[PartitionItem]],
     include_standalone: bool = True,
+    use_amd_ci_estimates: bool = False,
 ) -> None:
     total_time = sum(
         item.est_time
         for item in build_partition_items(
-            suite_info, include_standalone=include_standalone
+            suite_info,
+            include_standalone=include_standalone,
+            use_amd_ci_estimates=use_amd_ci_estimates,
         )
     )
     print(f"{suite_name.upper()} suite:")
@@ -275,6 +295,11 @@ def main():
         action="store_true",
         help="Only partition DiffusionTestCase parametrized cases.",
     )
+    parser.add_argument(
+        "--amd-ci-estimates",
+        action="store_true",
+        help="Apply AMD CI cold-start estimate scaling and overrides.",
+    )
     args = parser.parse_args()
 
     script_dir = Path(__file__).resolve().parent
@@ -310,7 +335,9 @@ def main():
             continue
 
         items = build_partition_items(
-            suite_info, include_standalone=not args.parametrized_only
+            suite_info,
+            include_standalone=not args.parametrized_only,
+            use_amd_ci_estimates=args.amd_ci_estimates,
         )
         total_time = sum(item.est_time for item in items)
         partition_count = compute_partition_count(
@@ -327,6 +354,7 @@ def main():
             suite_info,
             partitions,
             include_standalone=not args.parametrized_only,
+            use_amd_ci_estimates=args.amd_ci_estimates,
         )
 
         output_name = SUITE_OUTPUT_NAMES[suite_name]

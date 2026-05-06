@@ -604,11 +604,24 @@ def _is_retryable_failure(full_output: str) -> bool:
         "out of memory" in full_output.lower() or "oom killer" in full_output.lower()
     )
 
+    is_distributed_startup_failure = any(
+        marker in full_output
+        for marker in (
+            "DistBackendError",
+            "NCCL error",
+            "RCCL",
+            "ncclUnhandledCudaError",
+            "Rank 0 scheduler is dead",
+            "Server exited early",
+        )
+    )
+
     return (
         is_perf_assertion
         or is_aggregated_retryable_failure
         or is_flaky_ci_assertion
         or is_oom_error
+        or is_distributed_startup_failure
     )
 
 

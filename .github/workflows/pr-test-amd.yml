@@ -613,7 +613,7 @@ jobs:
       - name: Compute diffusion partitions
         id: compute
         run: |
-          python scripts/ci/utils/diffusion/compute_diffusion_partitions.py --min-time 900 --target-time 1200 --max-time 1800 --max-partitions 10
+          python scripts/ci/utils/diffusion/compute_diffusion_partitions.py --amd-ci-estimates --min-time 900 --target-time 1200 --max-time 1800 --max-partitions 10
 
   multimodal-gen-test-1-gpu-amd:
     name: ${{ format('multimodal-gen-test-1-gpu-amd (linux-{0}-1gpu-sglang, {1})', inputs.runner_arch || (github.event_name == 'pull_request' && 'mi300' || 'mi325'), matrix.part) }}
@@ -733,6 +733,7 @@ jobs:
             -e SGLANG_DENOISE_AGG_TOLERANCE=0.3 \
             -e SGLANG_SKIP_CONSISTENCY=1 \
             -e SGLANG_TEST_NUM_INFERENCE_STEPS=5 \
+            -e SGLANG_DIFFUSION_ARTIFACT_DIR=/sglang-checkout/diffusion-failures \
             -e AITER_JIT_DIR=/sgl-data/aiter-kernels \
             -e MIOPEN_USER_DB_PATH=/sgl-data/miopen-cache \
             -e HF_HUB_ENABLE_HF_TRANSFER=1 \
@@ -749,6 +750,15 @@ jobs:
           # Post-test diagnostics
           echo "=== Post-test System Memory Status ==="
           free -h
+
+      - name: Upload diffusion failure artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diffusion-failures-amd-1gpu-${{ matrix.part }}-${{ github.run_attempt }}
+          path: diffusion-failures/
+          if-no-files-found: ignore
+          retention-days: 7
 
   multimodal-gen-test-2-gpu-amd:
     name: ${{ format('multimodal-gen-test-2-gpu-amd (linux-{0}-2gpu-sglang, {1})', inputs.runner_arch || (github.event_name == 'pull_request' && 'mi300' || 'mi325'), matrix.part) }}
@@ -867,7 +877,9 @@ jobs:
             -e SGLANG_DENOISE_AGG_TOLERANCE=0.3 \
             -e SGLANG_SKIP_CONSISTENCY=1 \
             -e SGLANG_TEST_NUM_INFERENCE_STEPS=5 \
+            -e SGLANG_TEST_WAIT_SECS=2400 \
             -e RCCL_MSCCL_ENABLE=0 \
+            -e SGLANG_DIFFUSION_ARTIFACT_DIR=/sglang-checkout/diffusion-failures \
             -e AITER_JIT_DIR=/sgl-data/aiter-kernels \
             -e MIOPEN_USER_DB_PATH=/sgl-data/miopen-cache \
             -e HF_HUB_ENABLE_HF_TRANSFER=1 \
@@ -883,6 +895,15 @@ jobs:
           # Post-test diagnostics
           echo "=== Post-test System Memory Status ==="
           free -h
+
+      - name: Upload diffusion failure artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diffusion-failures-amd-2gpu-${{ matrix.part }}-${{ github.run_attempt }}
+          path: diffusion-failures/
+          if-no-files-found: ignore
+          retention-days: 7
 
 
   wait-for-stage-b-amd:
