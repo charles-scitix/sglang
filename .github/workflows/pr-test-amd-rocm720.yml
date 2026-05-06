@@ -557,7 +557,7 @@ jobs:
       - name: Compute diffusion partitions
         id: compute
         run: |
-          python scripts/ci/utils/diffusion/compute_diffusion_partitions.py --amd-ci-estimates --min-time 900 --target-time 1200 --max-time 1800 --max-partitions 10
+          python scripts/ci/utils/diffusion/compute_diffusion_partitions.py --amd-ci-estimates --min-time 1500 --target-time 3000 --max-time 3600 --max-partitions 10
 
   multimodal-gen-test-1-gpu-amd-rocm720:
     needs: [check-changes, compute-diffusion-partitions]
