@@ -613,7 +613,7 @@ jobs:
       - name: Compute diffusion partitions
         id: compute
         run: |
-          python scripts/ci/utils/diffusion/compute_diffusion_partitions.py --amd-ci-estimates --min-time 1500 --target-time 3000 --max-time 3600 --max-partitions 10
+          python scripts/ci/utils/diffusion/compute_diffusion_partitions.py --amd-ci-estimates --min-time 2400 --target-time 4500 --max-time 4800 --max-partitions 10
 
   multimodal-gen-test-1-gpu-amd:
     name: ${{ format('multimodal-gen-test-1-gpu-amd (linux-{0}-1gpu-sglang, {1})', inputs.runner_arch || (github.event_name == 'pull_request' && 'mi300' || 'mi325'), matrix.part) }}
