@@ -677,6 +677,9 @@ jobs:
             -e SGLANG_DENOISE_AGG_TOLERANCE=0.3 \
             -e SGLANG_SKIP_CONSISTENCY=1 \
             -e SGLANG_TEST_NUM_INFERENCE_STEPS=5 \
+            -e NCCL_CUMEM_ENABLE=0 \
+            -e NCCL_NVLS_ENABLE=0 \
+            -e RCCL_MSCCL_ENABLE=0 \
             -e SGLANG_DIFFUSION_ARTIFACT_DIR=/sglang-checkout/diffusion-failures \
             -e AITER_JIT_DIR=/sgl-data/aiter-kernels \
             -e MIOPEN_USER_DB_PATH=/sgl-data/miopen-cache \
