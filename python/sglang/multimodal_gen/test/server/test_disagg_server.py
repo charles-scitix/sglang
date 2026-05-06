@@ -225,10 +225,6 @@ class DisaggCluster:
             str(self.api_port),
             "--host",
             HOST,
-            # Match the disagg-args default and the client-side request timeout
-            # below (600s). MI300 cold-warmup of the Z-Image disagg pipeline
-            # (text encoder + denoiser + decoder + first-time aiter JIT) does
-            # not complete within 120s, even though MI325 does.
             "--disagg-timeout",
             "600",
             "--log-level",
