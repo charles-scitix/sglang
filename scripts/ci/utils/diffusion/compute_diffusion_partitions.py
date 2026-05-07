@@ -41,25 +41,27 @@ SUITE_OUTPUT_NAMES = {"1-gpu": "1gpu", "2-gpu": "2gpu", "1-gpu-b200": "b200"}
 DEFAULT_STANDALONE_EST_TIME_SECONDS = 300.0
 
 # Perf baselines are H100 numbers; MI300 wall-clock is dominated by ROCm
-# kernel warmup and HF weight streaming. Scale + per-case overrides come from
-# observed MI300 CI durations.
+# kernel warmup and HF weight streaming. The overrides include a cold-cache
+# download budget (~10 min per fresh 14B-class model snapshot at observed
+# ~50 MiB/s) on top of the warm-cache runtime.
 AMD_CI_CASE_ESTIMATE_SCALE = 2.5
 AMD_CI_CASE_ESTIMATE_OVERRIDES = {
     "1-gpu": {},
     "2-gpu": {
-        "ltx_2.3_one_stage_ti2v": 3100.0,
-        "wan2_1_i2v_14b_lora_2gpu": 3000.0,
-        "wan2_1_i2v_14b_480P_2gpu": 2300.0,
-        "ltx_2_two_stage_t2v": 1300.0,
-        "ltx_2.3_two_stage_t2v_2gpus": 1150.0,
-        "flux_2_image_t2i_2_gpus": 1100.0,
-        "wan2_2_t2v_a14b_2gpu": 1050.0,
-        "wan2_2_i2v_a14b_2gpu": 1000.0,
-        "wan2_2_t2v_a14b_teacache_2gpu": 950.0,
+        "ltx_2.3_one_stage_ti2v": 3300.0,
+        "wan2_1_i2v_14b_lora_2gpu": 3600.0,
+        "wan2_1_i2v_14b_480P_2gpu": 2800.0,
+        "wan2_1_i2v_14b_720P_2gpu": 1800.0,
+        "ltx_2_two_stage_t2v": 1500.0,
+        "ltx_2.3_two_stage_t2v_2gpus": 1500.0,
+        "ltx_2_3_two_stage_ti2v_2gpus": 1300.0,
+        "flux_2_image_t2i_2_gpus": 1300.0,
+        "wan2_2_t2v_a14b_2gpu": 1500.0,
+        "wan2_2_i2v_a14b_2gpu": 1500.0,
+        "wan2_2_t2v_a14b_teacache_2gpu": 1400.0,
+        "wan2_2_t2v_a14b_lora_2gpu": 1300.0,
+        "wan2_1_t2v_14b_2gpu": 1300.0,
         "mova_360p_ring1_uly2": 850.0,
-        "wan2_2_t2v_a14b_lora_2gpu": 800.0,
-        "wan2_1_t2v_14b_2gpu": 700.0,
-        "ltx_2_3_two_stage_ti2v_2gpus": 700.0,
         "wan2_2_ti2v_5b": 700.0,
     },
 }
