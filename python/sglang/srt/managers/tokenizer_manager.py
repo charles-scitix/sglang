@@ -395,6 +395,9 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
         # Request states
         self.rid_to_state: Dict[str, ReqState] = {}
         self.event_loop = None
+        self._handle_loop = None
+        self._handle_loop_thread = None
+        self._handle_loop_future = None
         self.asyncio_tasks = set()
 
         # Health check
@@ -1737,10 +1740,21 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
 
         # Create and start the handle_loop task
         loop = get_or_create_event_loop()
-        self.asyncio_tasks.add(
-            loop.create_task(print_exception_wrapper(self.handle_loop))
-        )
         self.event_loop = loop
+
+        # Run recv_from_detokenizer on a dedicated loop so socket receive does
+        # not contend with request waiters and HTTP response coroutines.
+        self._handle_loop = asyncio.new_event_loop()
+        self._handle_loop_thread = threading.Thread(
+            target=_run_event_loop_forever,
+            args=(self._handle_loop,),
+            daemon=True,
+        )
+        self._handle_loop_thread.start()
+        self._handle_loop_future = asyncio.run_coroutine_threadsafe(
+            print_exception_wrapper(self.handle_loop),
+            self._handle_loop,
+        )
 
         # We only add signal handler when the tokenizer manager is in the main thread
         # due to the CPython limitation.
@@ -1761,6 +1775,14 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
         while True:
             with self.soft_watchdog.disable():
                 recv_obj = await self.recv_from_detokenizer.recv_pyobj()
+            dispatch_future = asyncio.run_coroutine_threadsafe(
+                self._dispatch_recv_obj(recv_obj), self.event_loop
+            )
+            await asyncio.wrap_future(dispatch_future)
+
+    async def _dispatch_recv_obj(self, recv_obj):
+        """Dispatch detokenizer outputs on the main request event loop."""
+        try:
             if isinstance(
                 recv_obj,
                 (BatchStrOutput, BatchEmbeddingOutput, BatchTokenIDOutput),
@@ -1770,6 +1792,9 @@ class TokenizerManager(TokenizerControlMixin, TokenizerManagerScoreMixin):
                 self._result_dispatcher(recv_obj)
             self.last_receive_tstamp = real_time()
             self.soft_watchdog.feed()
+        except Exception:
+            self.soft_watchdog.feed()
+            raise
 
     async def _handle_batch_output(
         self,
@@ -2921,6 +2946,11 @@ async def print_exception_wrapper(func):
             func.__self__.dump_requests_before_crash()
         kill_process_tree(os.getpid(), include_parent=True)
         sys.exit(1)
+
+
+def _run_event_loop_forever(loop: asyncio.AbstractEventLoop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
 
 
 def _get_processor_wrapper(server_args):
